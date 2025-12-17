@@ -24,10 +24,9 @@ pipeline {
     stage('Build App') {
       steps {
         ansiColor('xterm') {
-          dir('app') {
-            bat 'mvn -version'
-            bat 'mvn -B clean package'
-          }
+          // Run Maven from repo root (not app/)
+          bat 'mvn -version'
+          bat 'mvn -B clean package'
         }
       }
     }
@@ -43,10 +42,14 @@ pipeline {
 
           bat 'docker compose up --build -d'
 
-          // wait longer for app startup
-          bat 'ping -n 40 127.0.0.1 > nul'
-          // health check
-          bat 'curl -s http://localhost:8089/actuator/health || exit 1'
+          // wait until app is healthy instead of blind sleep
+          bat '''
+          for /l %%x in (1, 1, 40) do (
+            curl -s http://localhost:8089/actuator/health && exit 0
+            timeout /t 2 >nul
+          )
+          exit 1
+          '''
         }
       }
     }
@@ -54,9 +57,8 @@ pipeline {
     stage('Run UI Tests (TestNG)') {
       steps {
         ansiColor('xterm') {
-          dir('tests') {
-            bat 'mvn -B test'
-          }
+          // Run tests from repo root or adjust if tests/ has its own pom.xml
+          bat 'mvn -B test'
         }
       }
     }
@@ -70,8 +72,11 @@ pipeline {
 
         // Publish TestNG results using JUnit-compatible XMLs
         junit '**/target/surefire-reports/*.xml'
-        // Archive HTML reports for viewing
-        
+
+        // Optional: publish HTML TestNG report if generated
+        publishHTML([reportDir: 'target/surefire-reports',
+                     reportFiles: 'index.html',
+                     reportName: 'TestNG Report'])
       }
     }
   }
