@@ -34,7 +34,7 @@ public class LoginTest {
         driver.findElement(By.cssSelector("button[type='submit']")).click();
 
         boolean successShown = driver.findElements(By.xpath("//div[contains(text(),'invalid')]")).size() > 0;
-        Assertions.assertFalse(successShown, "Login Failed Ok");
+        Assertions.assertFalse(successShown, "Login Failed Ok1");
     }
 
 //    @Test
